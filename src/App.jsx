@@ -7,7 +7,6 @@ import { Moon, Sun } from 'lucide-react'
 function App() {
   const [session, setSession] = useState(null)
   const [isDark, setIsDark] = useState(() => {
-    // Read dark mode preference from localStorage
     return localStorage.getItem('theme') === 'dark'
   })
 
@@ -17,7 +16,6 @@ function App() {
   }, [])
 
   useEffect(() => {
-    // Apply dark mode class to <html> element
     if (isDark) {
       document.documentElement.classList.add('dark')
       localStorage.setItem('theme', 'dark')
@@ -28,7 +26,7 @@ function App() {
   }, [isDark])
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white font-sans">
+    <div className="min-h-screen bg-background text-foreground font-sans antialiased">
       {session ? (
         <Dashboard session={session} isDark={isDark} setIsDark={setIsDark} />
       ) : (
@@ -40,25 +38,28 @@ function App() {
 
 function Dashboard({ session, isDark, setIsDark }) {
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       {/* Navbar */}
-      <header className="bg-white dark:bg-gray-800 shadow sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">
-            SilentAudit
-          </h1>
+      <header className="bg-card border-b sticky top-0 z-50">
+        <div className="container flex h-16 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <svg className="h-6 w-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+            <h1 className="text-lg font-semibold">SilentAudit</h1>
+          </div>
 
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsDark(!isDark)}
-              className="text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors"
+              className="p-2 rounded-full hover:bg-accent transition-colors"
               title="Toggle Theme"
             >
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
 
             <button
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm transition"
+              className="text-sm font-medium px-4 py-2 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
               onClick={() => supabase.auth.signOut()}
             >
               Sign Out
@@ -68,16 +69,32 @@ function Dashboard({ session, isDark, setIsDark }) {
       </header>
 
       {/* Main */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-semibold mb-6 tracking-tight">Device Activity Logs</h2>
-        <LogTable />
+      <main className="flex-1 py-8">
+        <div className="container">
+          <div className="flex flex-col gap-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold tracking-tight">Device Activity Logs</h2>
+              <div className="text-sm text-muted-foreground">
+                Last updated: {new Date().toLocaleString()}
+              </div>
+            </div>
+            <LogTable />
+          </div>
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-xs text-gray-500 dark:text-gray-400 mt-10 pb-6">
-        © {new Date().getFullYear()} <strong>SilentAudit</strong> by Tarka. All rights reserved.
+      <footer className="py-6 border-t">
+        <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
+          <p className="text-sm text-muted-foreground">
+            © {new Date().getFullYear()} SilentAudit by Tarka. All rights reserved.
+          </p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">v1.0.0</span>
+          </div>
+        </div>
       </footer>
-    </>
+    </div>
   )
 }
 
