@@ -9,7 +9,7 @@ export default function LogTable() {
     async function load() {
       const { data, error } = await supabase
         .from('logs')
-        .select('id, timestamp, active_app, device_id, devices(name)')
+        .select('id, timestamp, active_app, device_id') // Removed join with devices
         .order('timestamp', { ascending: false })
         .limit(100)
         
@@ -32,7 +32,7 @@ export default function LogTable() {
       <thead>
         <tr className="bg-gray-200">
           <th className="p-2">Time</th>
-          <th className="p-2">Device</th>
+          <th className="p-2">Device ID</th>
           <th className="p-2">App</th>
         </tr>
       </thead>
@@ -40,7 +40,7 @@ export default function LogTable() {
         {logs.map((log) => (
           <tr key={log.id} className="odd:bg-gray-50">
             <td className="p-2">{format(new Date(log.timestamp), 'dd MMM yyyy HH:mm')}</td>
-            <td className="p-2">{log.devices?.name || 'Unknown'}</td>
+            <td className="p-2">{log.device_id}</td>
             <td className="p-2">{log.active_app}</td>
           </tr>
         ))}
