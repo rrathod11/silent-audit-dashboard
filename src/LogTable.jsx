@@ -5,24 +5,27 @@ import { format } from 'date-fns'
 export default function LogTable() {
   const [logs, setLogs] = useState(null) // initially null
 
-  useEffect(() => {
-    async function load() {
-      const { data, error } = await supabase
-        .from('logs')
-        .select('id, timestamp, active_app, device_id') // Removed join with devices
-        .order('timestamp', { ascending: false })
-        .limit(100)
-        
-      if (error) {
-        console.error("❌ Supabase Error:", error)
-        setLogs([])
-      } else {
-        setLogs(data)
-      }
-    }
+useEffect(() => {
+  async function load() {
+    const { data, error } = await supabase
+      .from('logs')
+      .select('id, timestamp, active_app, device_id')
+      .order('timestamp', { ascending: false })
+      .limit(100)
 
-    load()
-  }, [])
+    console.log("📦 Supabase data:", data)
+    console.log("⚠️ Supabase error:", error)
+
+    if (error) {
+      setLogs([])
+    } else {
+      setLogs(data)
+    }
+  }
+
+  load()
+}, [])
+
 
   if (logs === null) return <p className="p-4">Loading logs...</p>
   if (logs.length === 0) return <p className="p-4">No activity found yet.</p>
