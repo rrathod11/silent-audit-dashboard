@@ -8,6 +8,7 @@ export default function LogTable() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [allDeviceIds, setAllDeviceIds] = useState([])
 
+  // 🔁 Load Logs on filter change or new insert
   useEffect(() => {
     loadLogs()
 
@@ -18,18 +19,13 @@ export default function LogTable() {
       })
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(logsChannel)
-    }
+    return () => supabase.removeChannel(logsChannel)
   }, [deviceIdFilter, dateRange])
 
   async function loadLogs() {
     let query = supabase.from('logs').select('*').order('timestamp', { ascending: false }).limit(100)
 
-    if (deviceIdFilter) {
-      query = query.eq('device_id', deviceIdFilter)
-    }
-
+    if (deviceIdFilter) query = query.eq('device_id', deviceIdFilter)
     if (dateRange.start && dateRange.end) {
       query = query.gte('timestamp', dateRange.start).lte('timestamp', dateRange.end)
     }
@@ -43,24 +39,31 @@ export default function LogTable() {
     }
   }
 
+  // 📦 Get unique device IDs for filter dropdown
   useEffect(() => {
     async function fetchDevices() {
-      const { data } = await supabase.from('logs').select('device_id').neq('device_id', '').limit(100)
-      const uniqueIds = [...new Set(data.map((row) => row.device_id))]
-      setAllDeviceIds(uniqueIds)
+      const { data } = await supabase
+        .from('logs')
+        .select('device_id')
+        .neq('device_id', '')
+        .limit(500)
+
+      const unique = Array.from(new Set(data.map((r) => r.device_id)))
+      setAllDeviceIds(unique)
     }
+
     fetchDevices()
   }, [])
 
   return (
-    <div className="p-6 font-sans">
+    <div className="p-4 sm:p-6 font-sans">
       <h2 className="text-2xl font-bold mb-4">SilentAudit Dashboard</h2>
 
       <div className="flex flex-wrap gap-4 mb-6">
         <select
           value={deviceIdFilter}
           onChange={(e) => setDeviceIdFilter(e.target.value)}
-          className="border p-2 rounded"
+          className="border p-2 rounded w-48"
         >
           <option value="">All Devices</option>
           {allDeviceIds.map((id) => (
@@ -72,11 +75,13 @@ export default function LogTable() {
 
         <input
           type="date"
+          value={dateRange.start}
           onChange={(e) => setDateRange((r) => ({ ...r, start: e.target.value }))}
           className="border p-2 rounded"
         />
         <input
           type="date"
+          value={dateRange.end}
           onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))}
           className="border p-2 rounded"
         />
@@ -100,17 +105,25 @@ export default function LogTable() {
               {logs.map((log) => (
                 <tr key={log.id} className="odd:bg-gray-50 border-b">
                   <td className="p-2">{format(new Date(log.timestamp), 'dd MMM yyyy HH:mm')}</td>
-                  <td className="p-2">{log.device_id}</td>
-                  <td className="p-2">{log.active_app}</td>
-                  <td className="p-2 text-blue-600 underline">
-                    <a href={log.browser_url} target="_blank" rel="noopener noreferrer">
-                      {log.browser_url?.slice(0, 40) || '—'}
-                    </a>
+                  <td className="p-2 text-xs font-mono">{log.device_id}</td>
+                  <td className="p-2">{log.active_app || '—'}</td>
+                  <td className="p-2 max-w-xs truncate text-blue-600">
+                    {log.browser_url && log.browser_url !== 'unknown' ? (
+                      <a href={log.browser_url} target="_blank" rel="noopener noreferrer">
+                        {log.browser_url.slice(0, 45)}...
+                      </a>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   <td className="p-2">
                     {log.screenshot && log.screenshot.startsWith('http') ? (
                       <a href={log.screenshot} target="_blank" rel="noopener noreferrer">
-                        <img src={log.screenshot} alt="Screenshot" className="h-10 rounded shadow" />
+                        <img
+                          src={log.screenshot}
+                          alt="screenshot"
+                          className="h-10 w-16 rounded shadow object-cover"
+                        />
                       </a>
                     ) : (
                       '—'
