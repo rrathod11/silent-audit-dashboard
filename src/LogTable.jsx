@@ -11,7 +11,6 @@ export default function LogTable() {
   useEffect(() => {
     loadLogs()
 
-    // 🔄 Supabase Realtime Subscription
     const logsChannel = supabase
       .channel('logs-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, () => {
@@ -44,7 +43,6 @@ export default function LogTable() {
     }
   }
 
-  // Get distinct device_ids for dropdown
   useEffect(() => {
     async function fetchDevices() {
       const { data } = await supabase.from('logs').select('device_id').neq('device_id', '').limit(100)
@@ -55,8 +53,10 @@ export default function LogTable() {
   }, [])
 
   return (
-    <div className="p-4">
-      <div className="flex gap-4 mb-4">
+    <div className="p-6 font-sans">
+      <h2 className="text-2xl font-bold mb-4">SilentAudit Dashboard</h2>
+
+      <div className="flex flex-wrap gap-4 mb-6">
         <select
           value={deviceIdFilter}
           onChange={(e) => setDeviceIdFilter(e.target.value)}
@@ -85,40 +85,42 @@ export default function LogTable() {
       {logs.length === 0 ? (
         <p>No activity found yet.</p>
       ) : (
-        <table className="min-w-full bg-white text-sm border">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="p-2">Time</th>
-              <th className="p-2">Device ID</th>
-              <th className="p-2">App</th>
-              <th className="p-2">Browser URL</th>
-              <th className="p-2">Screenshot</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log) => (
-              <tr key={log.id} className="odd:bg-gray-50">
-                <td className="p-2">{format(new Date(log.timestamp), 'dd MMM yyyy HH:mm')}</td>
-                <td className="p-2">{log.device_id}</td>
-                <td className="p-2">{log.active_app}</td>
-                <td className="p-2 text-blue-600 underline">
-                  <a href={log.browser_url} target="_blank" rel="noopener noreferrer">
-                    {log.browser_url?.slice(0, 30) || 'N/A'}
-                  </a>
-                </td>
-                <td className="p-2">
-                  {log.screenshot ? (
-                    <a href={log.screenshot} target="_blank" rel="noopener noreferrer">
-                      <img src={log.screenshot} alt="Screenshot" className="h-10 rounded shadow" />
-                    </a>
-                  ) : (
-                    '—'
-                  )}
-                </td>
+        <div className="overflow-x-auto border rounded shadow">
+          <table className="min-w-full text-sm table-auto">
+            <thead className="bg-gray-100 border-b">
+              <tr>
+                <th className="p-2 text-left">Time</th>
+                <th className="p-2 text-left">Device ID</th>
+                <th className="p-2 text-left">App</th>
+                <th className="p-2 text-left">Browser URL</th>
+                <th className="p-2 text-left">Screenshot</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log.id} className="odd:bg-gray-50 border-b">
+                  <td className="p-2">{format(new Date(log.timestamp), 'dd MMM yyyy HH:mm')}</td>
+                  <td className="p-2">{log.device_id}</td>
+                  <td className="p-2">{log.active_app}</td>
+                  <td className="p-2 text-blue-600 underline">
+                    <a href={log.browser_url} target="_blank" rel="noopener noreferrer">
+                      {log.browser_url?.slice(0, 40) || '—'}
+                    </a>
+                  </td>
+                  <td className="p-2">
+                    {log.screenshot && log.screenshot.startsWith('http') ? (
+                      <a href={log.screenshot} target="_blank" rel="noopener noreferrer">
+                        <img src={log.screenshot} alt="Screenshot" className="h-10 rounded shadow" />
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
