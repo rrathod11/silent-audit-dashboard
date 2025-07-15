@@ -55,14 +55,14 @@ function App() {
     const fetchData = async () => {
       const { data: locationLogs } = await supabase
         .from('logs')
-        .select('device_id, location_data')
+        .select('device_key, location_data')
         .not('location_data', 'is', null)
         .order('timestamp', { ascending: false })
         .limit(100);
 
       if (locationLogs) {
         const locations = locationLogs.map(log => ({
-          device_id: log.device_id,
+          device_key: log.device_key,
           latitude: log.location_data?.latitude || 0,
           longitude: log.location_data?.longitude || 0,
           city: log.location_data?.city || 'Unknown'
