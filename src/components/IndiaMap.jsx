@@ -1,16 +1,16 @@
 import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
 
-const geoUrl = 'https://raw.githubusercontent.com/AshKyd/geojson-regions/master/countries/in/state.json';
+const geoUrl = 'https://raw.githubusercontent.com/ramserran/indian-states-geojson/master/india_states.geojson';
 
-export default function IndiaMap({ locations = [] }) {
+export default function IndiaMap({ locations }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 h-full">
-      <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">Device Locations</h3>
-      <div className="h-96 w-full">
+    <div className="bg-white rounded-xl shadow-lg p-4 h-full">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">Device Locations</h3>
+      <div className="h-[500px] w-full">
         <ComposableMap
           projection="geoMercator"
           projectionConfig={{
-            center: [78, 22],
+            center: [82.8, 22],
             scale: 1000
           }}
         >
@@ -27,27 +27,18 @@ export default function IndiaMap({ locations = [] }) {
               ))
             }
           </Geographies>
-
-          {(locations || []).map((location, i) => {
-            const { longitude, latitude, city } = location || {};
-            if (longitude == null || latitude == null) return null;
-            return (
-              <Marker key={i} coordinates={[longitude, latitude]}>
-                <circle r={6} fill="#F87171" stroke="#FFF" strokeWidth={2} />
-                <text
-                  textAnchor="middle"
-                  y={-10}
-                  style={{
-                    fontFamily: "system-ui",
-                    fill: "#5D5A6D",
-                    fontSize: "10px"
-                  }}
-                >
-                  {city || "Unknown"}
-                </text>
-              </Marker>
-            );
-          })}
+          {locations?.map((location, i) => (
+            <Marker key={i} coordinates={[location.longitude, location.latitude]}>
+              <circle r={6} fill="#F87171" stroke="#FFF" strokeWidth={2} />
+              <text
+                textAnchor="middle"
+                y={-10}
+                style={{ fontFamily: "system-ui", fill: "#5D5A6D", fontSize: "10px" }}
+              >
+                {location.city}
+              </text>
+            </Marker>
+          ))}
         </ComposableMap>
       </div>
     </div>
