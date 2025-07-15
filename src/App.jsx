@@ -4,8 +4,6 @@ import { supabase } from './supabaseClient';
 import LogTable from './LogTable';
 import Login from './Login';
 import StatCard from './components/StatCard';
-import SummaryStats from './components/SummaryStats';
-import CSVDownloader from './components/CSVDownloader';
 
 import {
   FiSun,
