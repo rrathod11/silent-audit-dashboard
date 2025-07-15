@@ -26,7 +26,7 @@ export default function LogTable() {
   async function loadLogs() {
     let query = supabase.from('logs').select('*').order('timestamp', { ascending: false }).limit(100)
 
-    if (deviceIdFilter) query = query.eq('device_id', deviceIdFilter)
+    if (deviceIdFilter) query = query.eq('device_key', deviceIdFilter)
     if (dateRange.start && dateRange.end) {
       query = query.gte('timestamp', dateRange.start).lte('timestamp', dateRange.end)
     }
@@ -47,11 +47,11 @@ export default function LogTable() {
     async function fetchDevices() {
       const { data } = await supabase
         .from('logs')
-        .select('device_id')
-        .neq('device_id', '')
+        .select('device_key')
+        .neq('device_key', '')
         .limit(500)
 
-      const unique = Array.from(new Set(data.map((r) => r.device_id)))
+      const unique = Array.from(new Set(data.map((r) => r.device_key))
       setAllDeviceIds(unique)
     }
 
