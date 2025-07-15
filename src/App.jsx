@@ -1,9 +1,21 @@
-// App.jsx (updated)
+// App.jsx
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import LogTable from './LogTable';
 import Login from './Login';
-import { FiSun, FiMoon, FiMapPin, FiActivity, FiAlertTriangle, FiClock, FiPieChart, FiDownload } from 'react-icons/fi';
+import StatCard from './components/StatCard'; // ✅ Added import
+
+import {
+  FiSun,
+  FiMoon,
+  FiMapPin,
+  FiActivity,
+  FiAlertTriangle,
+  FiClock,
+  FiPieChart,
+  FiDownload
+} from 'react-icons/fi';
+
 import IndiaMap from './components/IndiaMap';
 import ActivityChart from './components/ActivityChart';
 import ProductivityScore from './components/ProductivityScore';
@@ -18,53 +30,15 @@ function App() {
   const [suspiciousActivity, setSuspiciousActivity] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // ✅ Load initial theme from localStorage
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    supabase.auth.onAuthStateChange((_, session) => setSession(session));
-    
-    // Load real device locations
-    const fetchLocations = async () => {
-      const { data } = await supabase
-        .from('logs')
-        .select('device_id, location_data')
-        .not('location_data', 'is', null)
-        .order('timestamp', { ascending: false })
-        .limit(100);
-      
-      if (data) {
-        const locations = data.map(log => ({
-          device_id: log.device_id,
-          latitude: log.location_data?.latitude || 0,
-          longitude: log.location_data?.longitude || 0,
-          city: log.location_data?.city || 'Unknown'
-        }));
-        setDeviceLocations(locations);
-      }
-    };
-    
-    // Load suspicious activity
-    const fetchSuspiciousActivity = async () => {
-      const { data } = await supabase
-        .from('logs')
-        .select('*')
-        .eq('is_suspicious', true)
-        .order('timestamp', { ascending: false })
-        .limit(10);
-      
-      if (data) {
-        setSuspiciousActivity(data.map(log => ({
-          id: log.id,
-          title: log.suspicious_reasons?.join(', ') || 'Suspicious activity',
-          device_id: log.device_id,
-          timestamp: new Date(log.timestamp).toLocaleString()
-        })));
-      }
-    };
-    
-    fetchLocations();
-    fetchSuspiciousActivity();
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      setIsDark(true);
+    }
   }, []);
 
+  // ✅ Apply theme to document
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -74,6 +48,51 @@ function App() {
       localStorage.setItem('theme', 'light');
     }
   }, [isDark]);
+
+  // ✅ Auth session & data fetch
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    supabase.auth.onAuthStateChange((_, session) => setSession(session));
+
+    const fetchData = async () => {
+      // ✅ Fetch device locations
+      const { data: locationLogs } = await supabase
+        .from('logs')
+        .select('device_id, location_data')
+        .not('location_data', 'is', null)
+        .order('timestamp', { ascending: false })
+        .limit(100);
+
+      if (locationLogs) {
+        const locations = locationLogs.map(log => ({
+          device_id: log.device_id,
+          latitude: log.location_data?.latitude || 0,
+          longitude: log.location_data?.longitude || 0,
+          city: log.location_data?.city || 'Unknown'
+        }));
+        setDeviceLocations(locations);
+      }
+
+      // ✅ Fetch suspicious activity
+      const { data: suspiciousLogs } = await supabase
+        .from('logs')
+        .select('*')
+        .eq('is_suspicious', true)
+        .order('timestamp', { ascending: false })
+        .limit(10);
+
+      if (suspiciousLogs) {
+        setSuspiciousActivity(suspiciousLogs.map(log => ({
+          id: log.id,
+          title: log.suspicious_reasons?.join(', ') || 'Suspicious activity',
+          device_id: log.device_id,
+          timestamp: new Date(log.timestamp).toLocaleString()
+        })));
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
@@ -90,26 +109,26 @@ function App() {
               </div>
               <div className="flex items-center gap-4">
                 <nav className="flex gap-2">
-                  <button 
+                  <button
                     onClick={() => setActiveTab('dashboard')}
                     className={`px-3 py-1 rounded-md ${activeTab === 'dashboard' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                   >
                     Dashboard
                   </button>
-                  <button 
+                  <button
                     onClick={() => setActiveTab('analytics')}
                     className={`px-3 py-1 rounded-md ${activeTab === 'analytics' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                   >
                     <FiPieChart className="inline mr-1" /> Analytics
                   </button>
-                  <button 
+                  <button
                     onClick={() => setActiveTab('export')}
                     className={`px-3 py-1 rounded-md ${activeTab === 'export' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                   >
                     <FiDownload className="inline mr-1" /> Export
                   </button>
                 </nav>
-                <button 
+                <button
                   onClick={() => setIsDark(!isDark)}
                   className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
                 >
@@ -129,7 +148,7 @@ function App() {
           <main className="container mx-auto px-4 py-6 flex-1">
             {activeTab === 'dashboard' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Map Section */}
+                {/* Map + Alerts */}
                 <div className="lg:col-span-2 space-y-6">
                   <IndiaMap locations={deviceLocations} />
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
@@ -152,37 +171,40 @@ function App() {
                   </div>
                 </div>
 
-                {/* Stats Section */}
+                {/* Stats */}
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
                     <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Device Overview</h3>
-                    <div className="space-y-3">
-                      <StatCard 
-                        title="Active Devices" 
-                        value={new Set(deviceLocations.map(l => l.device_id)).size} 
-                        icon={<FiActivity className="text-2xl" />}
-                        color="indigo"
-                      />
-                      <StatCard 
-                        title="Cities" 
-                        value={new Set(deviceLocations.map(l => l.city)).size} 
-                        icon={<FiMapPin className="text-2xl" />}
-                        color="emerald"
-                      />
-                      <StatCard 
-                        title="Avg. Work Hours" 
-                        value="6.2" 
-                        icon={<FiClock className="text-2xl" />}
-                        color="amber"
-                      />
-                    </div>
+                    {deviceLocations.length > 0 ? (
+                      <div className="space-y-3">
+                        <StatCard
+                          title="Active Devices"
+                          value={new Set(deviceLocations.map(l => l.device_id)).size}
+                          icon={<FiActivity className="text-2xl" />}
+                          color="indigo"
+                        />
+                        <StatCard
+                          title="Cities"
+                          value={new Set(deviceLocations.map(l => l.city)).size}
+                          icon={<FiMapPin className="text-2xl" />}
+                          color="emerald"
+                        />
+                        <StatCard
+                          title="Avg. Work Hours"
+                          value="6.2"
+                          icon={<FiClock className="text-2xl" />}
+                          color="amber"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 text-sm">No location data available.</p>
+                    )}
                   </div>
-                  
+
                   <ProductivityScore />
                   <ActivityChart />
                 </div>
 
-                {/* Log Table */}
                 <div className="lg:col-span-3">
                   <LogTable />
                 </div>
