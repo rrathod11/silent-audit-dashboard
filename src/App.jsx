@@ -1,4 +1,3 @@
-// App.jsx
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import LogTable from './LogTable';
@@ -48,55 +47,61 @@ function App() {
     }
   }, [isDark]);
 
+  const fetchData = async () => {
+    const { data: locationLogs } = await supabase
+      .from('logs')
+      .select('device_key, location_data')
+      .not('location_data', 'is', null)
+      .order('timestamp', { ascending: false })
+      .limit(100);
+
+    if (locationLogs) {
+      const locations = locationLogs.map(log => ({
+        device_key: log.device_key,
+        latitude: log.location_data?.latitude || 0,
+        longitude: log.location_data?.longitude || 0,
+        city: log.location_data?.city || 'Unknown'
+      }));
+      setDeviceLocations(locations);
+    }
+
+    const { data: suspiciousLogs } = await supabase
+      .from('logs')
+      .select('*')
+      .eq('is_suspicious', true)
+      .order('timestamp', { ascending: false })
+      .limit(10);
+
+    if (suspiciousLogs) {
+      setSuspiciousActivity(suspiciousLogs.map(log => ({
+        id: log.id,
+        title: log.suspicious_reasons?.join(', ') || 'Suspicious activity',
+        device_id: log.device_id,
+        timestamp: new Date(log.timestamp).toLocaleString()
+      })));
+    }
+
+    const { data: logs } = await supabase
+      .from('logs')
+      .select('timestamp')
+      .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+    if (logs) {
+      setAllLogs(logs);
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     supabase.auth.onAuthStateChange((_, session) => setSession(session));
 
-    const fetchData = async () => {
-      const { data: locationLogs } = await supabase
-        .from('logs')
-        .select('device_key, location_data')
-        .not('location_data', 'is', null)
-        .order('timestamp', { ascending: false })
-        .limit(100);
+    fetchData(); // Initial fetch
 
-      if (locationLogs) {
-        const locations = locationLogs.map(log => ({
-          device_key: log.device_key,
-          latitude: log.location_data?.latitude || 0,
-          longitude: log.location_data?.longitude || 0,
-          city: log.location_data?.city || 'Unknown'
-        }));
-        setDeviceLocations(locations);
-      }
+    const interval = setInterval(() => {
+      fetchData(); // Refresh every 30 seconds
+    }, 30000);
 
-      const { data: suspiciousLogs } = await supabase
-        .from('logs')
-        .select('*')
-        .eq('is_suspicious', true)
-        .order('timestamp', { ascending: false })
-        .limit(10);
-
-      if (suspiciousLogs) {
-        setSuspiciousActivity(suspiciousLogs.map(log => ({
-          id: log.id,
-          title: log.suspicious_reasons?.join(', ') || 'Suspicious activity',
-          device_id: log.device_id,
-          timestamp: new Date(log.timestamp).toLocaleString()
-        })));
-      }
-
-      const { data: logs } = await supabase
-        .from('logs')
-        .select('timestamp')
-        .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-
-      if (logs) {
-        setAllLogs(logs);
-      }
-    };
-
-    fetchData();
+    return () => clearInterval(interval); // Cleanup
   }, []);
 
   return (
