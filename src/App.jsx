@@ -1,17 +1,22 @@
+// App.jsx (updated)
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import LogTable from './LogTable';
 import Login from './Login';
-import { FiSun, FiMoon, FiMapPin, FiActivity, FiAlertTriangle, FiClock } from 'react-icons/fi';
+import { FiSun, FiMoon, FiMapPin, FiActivity, FiAlertTriangle, FiClock, FiPieChart, FiDownload } from 'react-icons/fi';
 import IndiaMap from './components/IndiaMap';
 import ActivityChart from './components/ActivityChart';
 import ProductivityScore from './components/ProductivityScore';
+import AppUsageChart from './components/AppUsageChart';
+import WebsiteUsageChart from './components/WebsiteUsageChart';
+import ExportReport from './components/ExportReport';
 
 function App() {
   const [session, setSession] = useState(null);
   const [isDark, setIsDark] = useState(false);
   const [deviceLocations, setDeviceLocations] = useState([]);
   const [suspiciousActivity, setSuspiciousActivity] = useState([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -37,7 +42,27 @@ function App() {
       }
     };
     
+    // Load suspicious activity
+    const fetchSuspiciousActivity = async () => {
+      const { data } = await supabase
+        .from('logs')
+        .select('*')
+        .eq('is_suspicious', true)
+        .order('timestamp', { ascending: false })
+        .limit(10);
+      
+      if (data) {
+        setSuspiciousActivity(data.map(log => ({
+          id: log.id,
+          title: log.suspicious_reasons?.join(', ') || 'Suspicious activity',
+          device_id: log.device_id,
+          timestamp: new Date(log.timestamp).toLocaleString()
+        })));
+      }
+    };
+    
     fetchLocations();
+    fetchSuspiciousActivity();
   }, []);
 
   useEffect(() => {
@@ -64,6 +89,26 @@ function App() {
                 </h1>
               </div>
               <div className="flex items-center gap-4">
+                <nav className="flex gap-2">
+                  <button 
+                    onClick={() => setActiveTab('dashboard')}
+                    className={`px-3 py-1 rounded-md ${activeTab === 'dashboard' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    Dashboard
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('analytics')}
+                    className={`px-3 py-1 rounded-md ${activeTab === 'analytics' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    <FiPieChart className="inline mr-1" /> Analytics
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('export')}
+                    className={`px-3 py-1 rounded-md ${activeTab === 'export' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    <FiDownload className="inline mr-1" /> Export
+                  </button>
+                </nav>
                 <button 
                   onClick={() => setIsDark(!isDark)}
                   className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
@@ -81,64 +126,84 @@ function App() {
           </header>
 
           {/* Main Content */}
-          <main className="container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-            {/* Map Section */}
-            <div className="lg:col-span-2 space-y-6">
-              <IndiaMap locations={deviceLocations} />
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Security Alerts</h3>
-                <div className="space-y-3">
-                  {suspiciousActivity.length > 0 ? (
-                    suspiciousActivity.map(alert => (
-                      <div key={alert.id} className="p-3 bg-red-50 dark:bg-red-900/30 rounded-lg flex items-start gap-3">
-                        <FiAlertTriangle className="text-red-500 dark:text-red-400 mt-1 flex-shrink-0" />
-                        <div>
-                          <p className="font-medium text-red-800 dark:text-red-200">{alert.title}</p>
-                          <p className="text-sm text-red-600 dark:text-red-300">{alert.device_id} • {alert.timestamp}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">No security alerts detected</p>
-                  )}
+          <main className="container mx-auto px-4 py-6 flex-1">
+            {activeTab === 'dashboard' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Map Section */}
+                <div className="lg:col-span-2 space-y-6">
+                  <IndiaMap locations={deviceLocations} />
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                    <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Security Alerts</h3>
+                    <div className="space-y-3">
+                      {suspiciousActivity.length > 0 ? (
+                        suspiciousActivity.map(alert => (
+                          <div key={alert.id} className="p-3 bg-red-50 dark:bg-red-900/30 rounded-lg flex items-start gap-3">
+                            <FiAlertTriangle className="text-red-500 dark:text-red-400 mt-1 flex-shrink-0" />
+                            <div>
+                              <p className="font-medium text-red-800 dark:text-red-200">{alert.title}</p>
+                              <p className="text-sm text-red-600 dark:text-red-300">{alert.device_id} • {alert.timestamp}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 dark:text-gray-400 text-center py-4">No security alerts detected</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats Section */}
+                <div className="space-y-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                    <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Device Overview</h3>
+                    <div className="space-y-3">
+                      <StatCard 
+                        title="Active Devices" 
+                        value={new Set(deviceLocations.map(l => l.device_id)).size} 
+                        icon={<FiActivity className="text-2xl" />}
+                        color="indigo"
+                      />
+                      <StatCard 
+                        title="Cities" 
+                        value={new Set(deviceLocations.map(l => l.city)).size} 
+                        icon={<FiMapPin className="text-2xl" />}
+                        color="emerald"
+                      />
+                      <StatCard 
+                        title="Avg. Work Hours" 
+                        value="6.2" 
+                        icon={<FiClock className="text-2xl" />}
+                        color="amber"
+                      />
+                    </div>
+                  </div>
+                  
+                  <ProductivityScore />
+                  <ActivityChart />
+                </div>
+
+                {/* Log Table */}
+                <div className="lg:col-span-3">
+                  <LogTable />
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Stats Section */}
-            <div className="space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Device Overview</h3>
-                <div className="space-y-3">
-                  <StatCard 
-                    title="Active Devices" 
-                    value={new Set(deviceLocations.map(l => l.device_id)).size} 
-                    icon={<FiActivity className="text-2xl" />}
-                    color="indigo"
-                  />
-                  <StatCard 
-                    title="Cities" 
-                    value={new Set(deviceLocations.map(l => l.city)).size} 
-                    icon={<FiMapPin className="text-2xl" />}
-                    color="emerald"
-                  />
-                  <StatCard 
-                    title="Avg. Work Hours" 
-                    value="6.2" 
-                    icon={<FiClock className="text-2xl" />}
-                    color="amber"
-                  />
+            {activeTab === 'analytics' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <AppUsageChart />
+                <WebsiteUsageChart />
+                <div className="lg:col-span-2">
+                  <ActivityChart fullHeight />
                 </div>
               </div>
-              
-              <ProductivityScore />
-              <ActivityChart />
-            </div>
+            )}
 
-            {/* Log Table */}
-            <div className="lg:col-span-3">
-              <LogTable />
-            </div>
+            {activeTab === 'export' && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                <ExportReport />
+              </div>
+            )}
           </main>
         </div>
       ) : (
