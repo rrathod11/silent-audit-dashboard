@@ -1,62 +1,73 @@
-import { useState, useEffect } from 'react'
-import { supabase } from './supabaseClient'
-import { format } from 'date-fns'
-import { Search, Filter, Calendar } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+import { format } from 'date-fns';
+import { Search, Filter, Calendar } from 'lucide-react';
 
 export default function LogTable() {
-  const [logs, setLogs] = useState([])
-  const [deviceIdFilter, setDeviceIdFilter] = useState('')
-  const [dateRange, setDateRange] = useState({ start: '', end: '' })
-  const [allDeviceIds, setAllDeviceIds] = useState([])
-  const [searchQuery, setSearchQuery] = useState('')
+  const [logs, setLogs] = useState([]);
+  const [deviceIdFilter, setDeviceIdFilter] = useState('');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [allDeviceIds, setAllDeviceIds] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    loadLogs()
+    loadLogs();
 
     const logsChannel = supabase
       .channel('logs-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, () => {
-        loadLogs()
+        loadLogs();
       })
-      .subscribe()
+      .subscribe();
 
-    return () => supabase.removeChannel(logsChannel)
-  }, [deviceIdFilter, dateRange, searchQuery])
+    return () => supabase.removeChannel(logsChannel);
+  }, [deviceIdFilter, dateRange.start, dateRange.end, searchQuery]);
 
   async function loadLogs() {
-    let query = supabase.from('logs').select('*').order('timestamp', { ascending: false }).limit(100)
+    setIsLoading(true);
+    let query = supabase
+      .from('logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(100);
 
-    if (deviceIdFilter) query = query.eq('device_key', deviceIdFilter)
+    if (deviceIdFilter) query = query.eq('device_key', deviceIdFilter);
     if (dateRange.start && dateRange.end) {
-      query = query.gte('timestamp', dateRange.start).lte('timestamp', dateRange.end)
+      query = query.gte('timestamp', dateRange.start).lte('timestamp', dateRange.end);
     }
     if (searchQuery) {
-      query = query.or(`active_app.ilike.%${searchQuery}%,browser_url.ilike.%${searchQuery}%`)
+      query = query.or(
+        `active_app.ilike.%${searchQuery}%,browser_url.ilike.%${searchQuery}%`
+      );
     }
 
-    const { data, error } = await query
+    const { data, error } = await query;
+    setIsLoading(false);
     if (error) {
-      console.error('❌ Supabase Error:', error)
-      setLogs([])
+      console.error('❌ Supabase Error:', error);
+      setLogs([]);
     } else {
-      setLogs(data)
+      setLogs(data);
     }
   }
 
   useEffect(() => {
     async function fetchDevices() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('logs')
         .select('device_key')
         .neq('device_key', '')
-        .limit(500)
+        .limit(500);
 
-      const unique = Array.from(new Set(data.map((r) => r.device_key))
-      setAllDeviceIds(unique)
+      if (!error && data) {
+        const unique = Array.from(new Set(data.map((r) => r.device_key)));
+        setAllDeviceIds(unique);
+      }
     }
 
-    fetchDevices()
-  }, [])
+    fetchDevices();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -81,7 +92,7 @@ export default function LogTable() {
                 <select
                   value={deviceIdFilter}
                   onChange={(e) => setDeviceIdFilter(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <option value="">All Devices</option>
                   {allDeviceIds.map((id) => (
@@ -98,14 +109,14 @@ export default function LogTable() {
                   type="date"
                   value={dateRange.start}
                   onChange={(e) => setDateRange((r) => ({ ...r, start: e.target.value }))}
-                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
                 <span className="text-muted-foreground">to</span>
                 <input
                   type="date"
                   value={dateRange.end}
                   onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))}
-                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
               </div>
             </div>
@@ -113,7 +124,7 @@ export default function LogTable() {
         </div>
       </div>
 
-      {/* Logs Table Card */}
+      {/* Logs Table */}
       <div className="card overflow-hidden">
         {logs.length === 0 ? (
           <div className="card-content">
@@ -124,8 +135,8 @@ export default function LogTable() {
               <h3 className="mt-4 text-lg font-semibold">No logs found</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 {searchQuery || deviceIdFilter || dateRange.start
-                  ? "Try adjusting your search or filter criteria"
-                  : "Activity logs will appear here once available"}
+                  ? 'Try adjusting your search or filter criteria'
+                  : 'Activity logs will appear here once available'}
               </p>
             </div>
           </div>
@@ -134,11 +145,11 @@ export default function LogTable() {
             <table className="w-full caption-bottom text-sm">
               <thead className="border-b">
                 <tr className="hover:bg-muted/50">
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Time</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Device ID</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">App</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Browser URL</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Screenshot</th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">Time</th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">Device ID</th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">App</th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">Browser URL</th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">Screenshot</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,23 +163,15 @@ export default function LogTable() {
                         </span>
                       </div>
                     </td>
-                    <td className="p-4 align-middle font-mono text-xs">
-                      {log.device_id}
-                    </td>
-                    <td className="p-4 align-middle">
-                      <div className="flex items-center gap-2">
-                        {log.active_app || (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4 align-middle max-w-xs">
+                    <td className="p-4 font-mono text-xs">{log.device_key || '—'}</td>
+                    <td className="p-4">{log.active_app || <span className="text-muted-foreground">—</span>}</td>
+                    <td className="p-4 max-w-xs">
                       {log.browser_url && log.browser_url !== 'unknown' ? (
                         <a
                           href={log.browser_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline underline-offset-4 truncate block"
+                          className="text-primary hover:underline truncate block"
                         >
                           {log.browser_url}
                         </a>
@@ -176,8 +179,8 @@ export default function LogTable() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="p-4 align-middle">
-                      {log.screenshot && log.screenshot.startsWith('http') ? (
+                    <td className="p-4">
+                      {log.screenshot?.startsWith('http') ? (
                         <a
                           href={log.screenshot}
                           target="_blank"
@@ -232,5 +235,5 @@ export default function LogTable() {
         </div>
       </div>
     </div>
-  )
+  );
 }
