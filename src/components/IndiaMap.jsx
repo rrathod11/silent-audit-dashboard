@@ -1,6 +1,6 @@
 import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
 
-const geoUrl = 'https://raw.githubusercontent.com/ramserran/indian-states-geojson/master/india_states.geojson';
+const geoUrl = 'https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson';
 
 export default function IndiaMap({ locations }) {
   return (
