@@ -1,9 +1,8 @@
-// App.jsx
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import LogTable from './LogTable';
 import Login from './Login';
-import StatCard from './components/StatCard'; // ✅ Added import
+import StatCard from './components/StatCard';
 
 import {
   FiSun,
@@ -30,7 +29,7 @@ function App() {
   const [suspiciousActivity, setSuspiciousActivity] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // ✅ Load initial theme from localStorage
+  // Load theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -38,7 +37,7 @@ function App() {
     }
   }, []);
 
-  // ✅ Apply theme to document
+  // Apply theme to document
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -49,23 +48,23 @@ function App() {
     }
   }, [isDark]);
 
-  // ✅ Auth session & data fetch
+  // Auth session & data fetch
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     supabase.auth.onAuthStateChange((_, session) => setSession(session));
 
     const fetchData = async () => {
-      // ✅ Fetch device locations
+      // ✅ Fetch device locations using correct column name
       const { data: locationLogs } = await supabase
         .from('logs')
-        .select('device_id, location_data')
+        .select('device_key, location_data')
         .not('location_data', 'is', null)
         .order('timestamp', { ascending: false })
         .limit(100);
 
       if (locationLogs) {
         const locations = locationLogs.map(log => ({
-          device_id: log.device_id,
+          device_id: log.device_key,
           latitude: log.location_data?.latitude || 0,
           longitude: log.location_data?.longitude || 0,
           city: log.location_data?.city || 'Unknown'
@@ -73,7 +72,7 @@ function App() {
         setDeviceLocations(locations);
       }
 
-      // ✅ Fetch suspicious activity
+      // ✅ Fetch suspicious activity with correct device_key
       const { data: suspiciousLogs } = await supabase
         .from('logs')
         .select('*')
@@ -85,7 +84,7 @@ function App() {
         setSuspiciousActivity(suspiciousLogs.map(log => ({
           id: log.id,
           title: log.suspicious_reasons?.join(', ') || 'Suspicious activity',
-          device_id: log.device_id,
+          device_id: log.device_key,
           timestamp: new Date(log.timestamp).toLocaleString()
         })));
       }
