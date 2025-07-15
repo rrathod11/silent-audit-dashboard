@@ -1,3 +1,4 @@
+// App.jsx
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import LogTable from './LogTable';
@@ -27,9 +28,9 @@ function App() {
   const [isDark, setIsDark] = useState(false);
   const [deviceLocations, setDeviceLocations] = useState([]);
   const [suspiciousActivity, setSuspiciousActivity] = useState([]);
+  const [allLogs, setAllLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Load theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -37,7 +38,6 @@ function App() {
     }
   }, []);
 
-  // Apply theme to document
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -48,23 +48,21 @@ function App() {
     }
   }, [isDark]);
 
-  // Auth session & data fetch
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     supabase.auth.onAuthStateChange((_, session) => setSession(session));
 
     const fetchData = async () => {
-      // ✅ Fetch device locations using correct column name
       const { data: locationLogs } = await supabase
         .from('logs')
-        .select('device_key, location_data')
+        .select('device_id, location_data')
         .not('location_data', 'is', null)
         .order('timestamp', { ascending: false })
         .limit(100);
 
       if (locationLogs) {
         const locations = locationLogs.map(log => ({
-          device_id: log.device_key,
+          device_id: log.device_id,
           latitude: log.location_data?.latitude || 0,
           longitude: log.location_data?.longitude || 0,
           city: log.location_data?.city || 'Unknown'
@@ -72,7 +70,6 @@ function App() {
         setDeviceLocations(locations);
       }
 
-      // ✅ Fetch suspicious activity with correct device_key
       const { data: suspiciousLogs } = await supabase
         .from('logs')
         .select('*')
@@ -84,9 +81,18 @@ function App() {
         setSuspiciousActivity(suspiciousLogs.map(log => ({
           id: log.id,
           title: log.suspicious_reasons?.join(', ') || 'Suspicious activity',
-          device_id: log.device_key,
+          device_id: log.device_id,
           timestamp: new Date(log.timestamp).toLocaleString()
         })));
+      }
+
+      const { data: logs } = await supabase
+        .from('logs')
+        .select('timestamp')
+        .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+      if (logs) {
+        setAllLogs(logs);
       }
     };
 
@@ -97,7 +103,6 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
       {session ? (
         <div className="flex flex-col min-h-screen">
-          {/* Header */}
           <header className="bg-white dark:bg-gray-800 shadow-lg">
             <div className="container mx-auto px-4 py-3 flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -143,11 +148,9 @@ function App() {
             </div>
           </header>
 
-          {/* Main Content */}
           <main className="container mx-auto px-4 py-6 flex-1">
             {activeTab === 'dashboard' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Map + Alerts */}
                 <div className="lg:col-span-2 space-y-6">
                   <IndiaMap locations={deviceLocations} />
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
@@ -170,7 +173,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* Stats */}
                 <div className="space-y-6">
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
                     <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Device Overview</h3>
@@ -201,7 +203,7 @@ function App() {
                   </div>
 
                   <ProductivityScore />
-                  <ActivityChart />
+                  <ActivityChart logs={allLogs} />
                 </div>
 
                 <div className="lg:col-span-3">
@@ -215,7 +217,7 @@ function App() {
                 <AppUsageChart />
                 <WebsiteUsageChart />
                 <div className="lg:col-span-2">
-                  <ActivityChart fullHeight />
+                  <ActivityChart logs={allLogs} />
                 </div>
               </div>
             )}
