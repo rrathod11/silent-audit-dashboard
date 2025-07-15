@@ -37,7 +37,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
-    device_id: '',
+    device_key: '',
     date_range: '',
     risk_level: ''
   });
@@ -103,7 +103,7 @@ function App() {
       setSuspiciousActivity(suspiciousLogs.map(log => ({
         id: log.id,
         title: log.suspicious_reasons?.join(', ') || 'Suspicious activity',
-        device_id: log.device_id,
+        device_key: log.device_key,
         timestamp: new Date(log.timestamp).toLocaleString(),
         risk_level: determineRiskLevel(log)
       })));
@@ -135,7 +135,7 @@ function App() {
     const { data } = await supabase
       .from('logs')
       .select('browser_history')
-      .eq('device_id', deviceId)
+      .eq('device_key', deviceId)
       .not('browser_history', 'is', null)
       .order('timestamp', { ascending: false })
       .limit(1);
@@ -164,13 +164,13 @@ function App() {
   const filteredLogs = allLogs.filter(log => {
     // Search filter
     const matchesSearch = searchQuery === '' || 
-      log.device_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.device_key?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.location_data?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.suspicious_reasons?.join(' ').toLowerCase().includes(searchQuery.toLowerCase());
     
     // Device ID filter
-    const matchesDevice = filters.device_id === '' || 
-      log.device_id?.toLowerCase().includes(filters.device_id.toLowerCase());
+    const matchesDevice = filters.device_key === '' || 
+      log.device_key?.toLowerCase().includes(filters.device_key.toLowerCase());
     
     // Date range filter (simplified)
     const matchesDate = filters.date_range === '' || 
@@ -200,7 +200,7 @@ function App() {
       headers.join(','),
       ...filteredLogs.map(log => [
         new Date(log.timestamp).toLocaleString(),
-        log.device_id,
+        log.device_key,
         log.location_data?.city || 'Unknown',
         log.activity_type || 'Unknown',
         determineRiskLevel(log),
@@ -296,7 +296,7 @@ function App() {
                             <div>
                               <p className="font-medium text-red-800 dark:text-red-200">{alert.title}</p>
                               <p className="text-sm text-red-600 dark:text-red-300">
-                                {alert.device_id} • {alert.timestamp}
+                                {alert.device_key} • {alert.timestamp}
                                 <span className={`ml-2 px-2 py-1 rounded-full text-xs ${riskLevels[alert.risk_level]?.color || riskLevels.normal.color}`}>
                                   {riskLevels[alert.risk_level]?.icon || riskLevels.normal.icon}
                                   {alert.risk_level}
@@ -319,7 +319,7 @@ function App() {
                       <div className="space-y-3">
                         <StatCard
                           title="Active Devices"
-                          value={new Set(deviceLocations.map(l => l.device_id)).size}
+                          value={new Set(deviceLocations.map(l => l.device_key)).size}
                           icon={<FiActivity className="text-2xl" />}
                           color="indigo"
                         />
@@ -363,11 +363,11 @@ function App() {
                         <div className="flex gap-2">
                           <select
                             className="px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            value={filters.device_id}
-                            onChange={(e) => handleFilterChange('device_id', e.target.value)}
+                            value={filters.device_key}
+                            onChange={(e) => handleFilterChange('device_key', e.target.value)}
                           >
                             <option value="">All Devices</option>
-                            {Array.from(new Set(allLogs.map(log => log.device_id))).map(id => (
+                            {Array.from(new Set(allLogs.map(log => log.device_key))).map(id => (
                               <option key={id} value={id}>{id}</option>
                             ))}
                           </select>
@@ -495,7 +495,7 @@ function App() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Device ID</p>
-                        <p className="text-gray-800 dark:text-white">{selectedLog.device_id}</p>
+                        <p className="text-gray-800 dark:text-white">{selectedLog.device_key}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">IP Address</p>
@@ -575,7 +575,7 @@ function App() {
                   </div>
 
                   <button
-                    onClick={() => fetchBrowserHistory(selectedLog.device_id)}
+                    onClick={() => fetchBrowserHistory(selectedLog.device_key)}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200 rounded-lg"
                   >
                     <FiGlobe /> View Browser History
