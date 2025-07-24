@@ -1,5 +1,5 @@
 // App.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import LogTable from './LogTable';
 import Login from './Login';
 import StatCard from './components/StatCard';
@@ -8,6 +8,7 @@ import CSVDownloader from './components/CSVDownloader';
 import { useAuth } from './context/AuthContext';
 import { useData } from './context/DataContext';
 import { useNotification } from './context/NotificationContext';
+import LoadingFallback from './components/LoadingFallback';
 
 import {
   FiSun,
@@ -33,7 +34,7 @@ import SystemHealth from './components/SystemHealth';
 import NotificationsPanel from './components/NotificationsPanel';
 
 function App() {
-  const { session, user, signOut } = useAuth();
+  const { session, user, signOut, loading: authLoading } = useAuth();
   const { 
     isLoading: dataLoading,
     error,
@@ -49,22 +50,31 @@ function App() {
   const [allLogs, setAllLogs] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(false);
+  const [initError, setInitError] = useState(null);
 
   // Theme handling
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      setIsDark(true);
+    try {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        setIsDark(true);
+      }
+    } catch (err) {
+      console.warn('Error accessing localStorage:', err);
     }
   }, []);
 
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    try {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+    } catch (err) {
+      console.warn('Error accessing localStorage:', err);
     }
   }, [isDark]);
 
@@ -75,33 +85,38 @@ function App() {
     const loadDashboardData = async () => {
       try {
         setIsLoading(true);
+        setInitError(null);
         
         // Fetch device locations
         const locations = await fetchDeviceLocations(100);
-        setDeviceLocations(locations);
+        setDeviceLocations(locations || []);
         
         // Fetch suspicious activities
         const activities = await fetchSuspiciousActivities(10);
-        setSuspiciousActivity(activities);
+        setSuspiciousActivity(activities || []);
         
         // Subscribe to real-time updates
         const unsubscribe = subscribeToLogs((payload) => {
           // Refresh data when new logs come in
-          loadDashboardData();
+          loadDashboardData().catch(console.error);
         });
         
         return () => {
           if (unsubscribe) unsubscribe();
         };
       } catch (err) {
-        showError('Failed to load dashboard data');
         console.error('Dashboard data error:', err);
+        setInitError('Failed to load dashboard data. Please try refreshing the page.');
+        showError('Failed to load dashboard data');
       } finally {
         setIsLoading(false);
       }
     };
     
-    loadDashboardData();
+    loadDashboardData().catch(err => {
+      console.error('Error in loadDashboardData:', err);
+      setInitError('Failed to initialize dashboard. Please try refreshing the page.');
+    });
   }, [session, fetchDeviceLocations, fetchSuspiciousActivities, subscribeToLogs, showError]);
 
   // Error handling
@@ -120,9 +135,33 @@ function App() {
     }
   };
 
+  // If authentication is still loading, show loading screen
+  if (authLoading) {
+    return <LoadingFallback message="Authenticating..." />;
+  }
+
   // If not authenticated, show login screen
   if (!session) {
     return <Login />;
+  }
+
+  // If there's an initialization error, show it
+  if (initError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900 dark:to-pink-900 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-lg w-full text-center">
+          <FiAlertTriangle className="text-red-500 text-4xl mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Error Loading Dashboard</h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-6">{initError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -193,7 +232,7 @@ function App() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
             </div>
           ) : (
-            <>
+            <Suspense fallback={<LoadingFallback message="Loading content..." />}>
               {activeTab === 'dashboard' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-6">
@@ -310,7 +349,7 @@ function App() {
                   </div>
                 </div>
               )}
-            </>
+            </Suspense>
           )}
         </main>
       </div>
